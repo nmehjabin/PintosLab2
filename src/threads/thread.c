@@ -24,7 +24,7 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* List of processes in sleep(wait) state*/
+/* list of sleeping list*/
 static struct list sleeping_list;
 
 /* List of all processes.  Processes are added to this list
@@ -73,9 +73,6 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-void thread_awake (int64_t current_tick);
-void thread_sleep(int64_t sleepticks);
-
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -97,7 +94,6 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
-  list_init (&sleeping_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -105,6 +101,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  
+  //sema initialize
+  sema_init(&(initial_thread->sema),0);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -145,62 +144,54 @@ thread_tick (void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 }
+//----------------------
 
-//----------------
+/*void thread_sleep(int64_t sleep_ticks){
+
+	struct thread *t =thread_current();
+	//enum intr_level old_level =intr_disable();
+	
+	//add 
+	list_push_back(&sleeping_list, &t->sleepelem);
+	//intr_set_level(old_level);
+	sema_down(&t->sema);
+}*/
 
 
-
-
-
-
-//---------------
-//adding here
-/* this function will wake up sleeping threads whose ticks_end has been expired, removing from the 
-sleeping queue and push it to the ready queue. This funnction must be called with interupption off*/
-
-void thread_awake (int64_t current_tick){
+void thread_awake(){
 	struct list_elem *e;
 	
-	//interrupt level check
-	ASSERT(intr_get_level()== INTR_OFF);
-	//ENUMERATE ALL THREADS IN sleeping_list
-	printf("entering in the loop ->");
-	for(e=list_begin(&sleeping_list); e!=list_end(&sleeping_list); e=list_next(e)){
-		printf("in the loop");
-		struct thread *t = list_entry(e,struct thread, sleepelem);
-		if(t->sleep_endtick <= current_tick){
-			//sleep is expired time to wake up
-			t->sleep_endtick=0;
+	//check
+	ASSERT(intr_get_level() ==INTR_OFF);
+	for(e=list_begin(&sleeping_list); e!=list_end(&sleeping_list);e=list_next(e)){
+		struct thread *t =list_entry(e,struct thread, sleepelem);
+		//check condition
+		if(t->sleep_ticks <=0){
 			list_remove(&t->sleepelem);
-			
-			//add to ready list
-			thread_unblock(t);
-			printf("end of loop");
+			sema_up(&t->sema);
 		}
 	}
+	
 }
-//adding here
-/* Make the current thread T to sleep, until the timer ticks has reaches 'ticks_end'.
-It calls thread_block(), making T sleep. This function must be called with interruption turned off
-	*/
 
-void thread_sleeping_until(int64_t ticks_end){
-	enum intr_level old_level = intr_disable();
- 	struct thread *t= thread_current();
- 	t->sleep_endtick =ticks_end;
- 	
- 	//add T to the sleeping queue
- 	list_push_back(&sleeping_list, &t->sleepelem);
- 	
- 	//make current thread block/sleeped
- 	thread_block();
- 	intr_set_level(old_level);
- 	
- }
- 
- //--------------------
- 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------
 
 /* Prints thread statistics. */
 void
@@ -266,12 +257,6 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
-
-
- 
-
-
-
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -532,11 +517,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-//adding me
-  t->sleeping_lock=NULL;
-  list_init (&t->locks);
-  t->sleep_endtick =0;
-  
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
