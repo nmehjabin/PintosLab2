@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/thread.c"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -89,25 +90,22 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-   int64_t start = timer_ticks ();
-  
+  int64_t start = timer_ticks ();
+
   ASSERT (intr_get_level () == INTR_ON);
-  //while (timer_elapsed (start) < ticks) 
-  //thread_yield ();
-  //assign requsted sleep time to current thread
-  thread_current ()-> sleep_ticks =ticks;
-
-  //disable interrupts to thread blocking
-   //enum intr_level old_level = intr_disable();
+  //----------my code
   
-  thread_sleeping_until(start+ticks);
-
-  //block current thread
-   // thread_block();
-
-  //set the old level interrupt to the current thread so that it doesnt crushes
-  //intr_set_level(old_level);
- 
+  //read_sleep(start+ticks);
+  
+  //-------------ends
+  //while (timer_elapsed (start) < ticks) 
+  //  thread_yield ();
+  struct thread *t =thread_current();
+  t->sleep_ticks = start+ ticks;
+	
+  list_push_back(&sleeping_list, &t->sleepelem);
+	
+  sema_down(&t->sema);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -180,30 +178,14 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
-/* Adding wake_thread() function here
-Function for waking up a sleeping thread. it checks whether a thread is being blocked or not. If TRUE, check then if thread's sleep_ticks is 0 or not by decrementing it on each conditional statement. if sleep_ticks reached 0 then unblock the sleeping thread.
-
- */
-static void wake_threads(struct thread *t, void *aux){
-  if(t->status == THREAD_BLOCKED){
-    // printf("thread status----->",t->status);
-    if(t->sleep_ticks >0){
-      t->sleep_ticks--;
-      if (t->sleep_ticks==0){
-	thread_unblock(t);
-      }
-    }
-  }
-}
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  //check each thread with wake_threads after each tick
-  
-  thread_foreach(wake_threads,0);
+  //my code
+  thread_awake();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
