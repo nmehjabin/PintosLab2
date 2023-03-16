@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -11,8 +12,7 @@ enum thread_status
     THREAD_RUNNING,     /* Running thread. */
     THREAD_READY,       /* Not running but ready to run. */
     THREAD_BLOCKED,     /* Waiting for an event to trigger. */
-    THREAD_DYING,        /* About to be destroyed. */
-    THREAD_SLEEPING      /*  new state for sleeping threads*/
+    THREAD_DYING        /* About to be destroyed. */
   };
 
 /* Thread identifier type.
@@ -90,15 +90,13 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    struct list_elem sleepelem;         /* List element stored in sleeping queue */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    int64_t sleep_ticks;               /*time to sleep in ticks*/
-    int64_t sleep_endtick;                /*the tick after which thread should wake up if it was sleeping */
-    struct lock *sleeping_lock;     /* the lock object which thread should wake up*/
-    struct list locks;             /* list of locks the thread hold/ for multiple donations*/
-   
+    
+    struct list_elem sleepelem;
+    struct semaphore sema;
+    int64_t sleep_ticks;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -144,9 +142,5 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-//void thread_sleep(int64_t);
-void thread_awake(int64_t);
-void thread_sleeping_until(int64_t);
 
 #endif /* threads/thread.h */
