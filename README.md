@@ -20,20 +20,9 @@ The main goals of Pintos Project 2 are:
 - Enforce memory safety between kernel and user space
 
 # Repository Structure
+<img width="655" height="296" alt="Screenshot 2025-11-24 at 12 09 27 PM" src="https://github.com/user-attachments/assets/4b5e5b5f-9d61-458d-8714-71cd9799766d" />
 
-PintosLab2/
-└── src/
-    ├── userprog/
-    │   ├── process.c           ← loading, argument passing, process lifecycle
-    │   ├── syscall.c           ← system call handler + implementations
-    │   ├── exception.c
-    │   └── ...  
-    │
-    ├── threads/
-    ├── devices/
-    ├── lib/
-    ├── tests/                  ← provided Pintos tests
-    └── Makefile
+
 
 # How to Build & Run
 
